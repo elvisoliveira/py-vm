@@ -75,27 +75,18 @@ def validate_num(num):
 
 
 def list_vms():
-    all_vms = sh(
-        '''vboxmanage list vms | cut -d '"' -f 2''').split("\n")
+    all_vms = sh('''VBoxManage.exe list vms | cut -d '"' -f 2''').split("\n")
     all_vms.sort()
-    running_vms = set(
-        sh('''vboxmanage list runningvms | cut -d '"' -f 2''').split("\n"))
-
-    print("{:32} {:12}  {:8}".format("VM", "STATUS", "SSH PORT"))
-    print("-" * (32 + 1 + 12 + 2 + 8))
+    running_vms = set(sh('''VBoxManage.exe list runningvms | cut -d '"' -f 2''').split("\n"))
+    print("{:32} {:12}".format("VM", "STATUS"))
+    print("-" * (32 + 1 + 12))
     for vm in all_vms:
         if vm == "":
             continue
         status = "powered off"
         if vm in running_vms:
             status = "running"
-        ssh_port = '  (none)'
-        try:
-            ssh_port = get_vm_ssh_port(vm)
-        except:
-            pass
-        print("{:32} {:12}  {:8}".format(vm, status, ssh_port))
-
+        print("{:32} {:12}".format(vm, status))
 
 def list_os_types():
     lines = sh('''VBoxManage.exe list ostypes | egrep ^ID''').strip().split("\n")

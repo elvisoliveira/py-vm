@@ -98,7 +98,7 @@ def list_vms():
 
 
 def list_os_types():
-    lines = sh('''vboxmanage list ostypes | egrep ^ID''').strip().split("\n")
+    lines = sh('''VBoxManage.exe list ostypes | egrep ^ID''').strip().split("\n")
     vmtypes = []
     for line in lines:
         vmtypes.append(re.search('(\\S+)$', line).group(1))
@@ -109,35 +109,35 @@ def list_os_types():
 
 
 def ensure_nat_network_exists():
-    code = run("vboxmanage natnetwork list | grep Name | grep {} > /dev/null".format(
+    code = run("VBoxManage.exe natnetwork list | grep Name | grep {} > /dev/null".format(
         nat_network_name))
     if code != 0:
         print("Creating {} network ({})".format(
             nat_network_name, nat_network_addr))
-        sh(("vboxmanage natnetwork add --netname {} --network {} " +
+        sh(("VBoxManage.exe natnetwork add --netname {} --network {} " +
             "--enable --dhcp on --ipv6 off").format(nat_network_name, nat_network_addr))
 
 
 def get_virtualbox_path():
     line = sh(
-        """vboxmanage list systemproperties | grep 'Default machine folder'""").strip()
+        """VBoxManage.exe list systemproperties | grep 'Default machine folder'""").strip()
     path = re.search("""(\\S+)$""", line).group(1)
     if not os.path.isdir(path):
         sys.exit(("get_virtualbox_path() - '{}' is not a directory\n" +
              "Hint: path shouldn't contain whitespaces\n" +
-             "Hint: use `vboxmanage setproperty machinefolder /home/user/virtuabox`").format(path))
+             "Hint: use `VBoxManage.exe setproperty machinefolder /home/user/virtuabox`").format(path))
     return path
 
 
 def get_vm_ssh_port(vm):
-    line = sh("vboxmanage showvminfo {} | grep ssh-forwarding".format(vm))
+    line = sh("VBoxManage.exe showvminfo {} | grep ssh-forwarding".format(vm))
     return int(re.search("""host port = (\d+)""", line).group(1))
 
 
 def get_max_ssh_port():
     max_port = 22000
     lines = sh(
-        "(vboxmanage list vms --long | grep 'ssh-forwarding') || true").split("\n")
+        "(VBoxManage.exe list vms --long | grep 'ssh-forwarding') || true").split("\n")
     for line in lines:
         if line == "":
             continue
@@ -150,7 +150,7 @@ def get_max_ssh_port():
 def get_max_vnc_port():
     max_port = 33000
     lines = sh(
-        "(vboxmanage list vms --long | grep 'VRDE property: TCP/Ports') || true").split("\n")
+        "(VBoxManage.exe list vms --long | grep 'VRDE property: TCP/Ports') || true").split("\n")
     for line in lines:
         if line == "":
             continue
@@ -164,13 +164,13 @@ def configure_port_forwarding(vm):
     ssh_port = get_max_ssh_port() + 1
     vnc_port = get_max_vnc_port() + 1
     print("VM '{}' - changing ssh port to {} and vnc port to {}".format(vm, ssh_port, vnc_port))
-    run("vboxmanage modifyvm {} --natpf1 delete ssh-forwarding 2>/dev/null".format(vm))
-    sh("vboxmanage modifyvm {} --nic2 natnetwork --nat-network2 {}".format(vm, nat_network_name))
-    sh('vboxmanage modifyvm {} --natpf1 "ssh-forwarding,tcp,,{},,22"'.format(vm, ssh_port))
-    sh("vboxmanage modifyvm {} --vrde on".format(vm))
-    sh("vboxmanage modifyvm {} --vrdeaddress 127.0.0.1".format(vm))
-    sh("vboxmanage modifyvm {} --vrdeport {}".format(vm, vnc_port))
-    sh('vboxmanage modifyvm {} --vrdeproperty VNCPassword="{}"'.format(vm, vnc_plain_pass))
+    run("VBoxManage.exe modifyvm {} --natpf1 delete ssh-forwarding 2>/dev/null".format(vm))
+    sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(vm, nat_network_name))
+    sh('VBoxManage.exe modifyvm {} --natpf1 "ssh-forwarding,tcp,,{},,22"'.format(vm, ssh_port))
+    sh("VBoxManage.exe modifyvm {} --vrde on".format(vm))
+    sh("VBoxManage.exe modifyvm {} --vrdeaddress 127.0.0.1".format(vm))
+    sh("VBoxManage.exe modifyvm {} --vrdeport {}".format(vm, vnc_port))
+    sh('VBoxManage.exe modifyvm {} --vrdeproperty VNCPassword="{}"'.format(vm, vnc_plain_pass))
 
 def create_vm(args):
     name = args[2]  # already validated
@@ -182,18 +182,18 @@ def create_vm(args):
     if not os.path.isfile(iso_path):
         sys.exit("Invalid iso_path '{}' - file doesn't exist".format(iso_path))
     disk_path = get_virtualbox_path() + "/" + name + "/" + name + ".vdi"
-    sh("vboxmanage createvm --name {} --ostype {} --register".format(name, vmtype))
-    sh(("vboxmanage modifyvm {} --cpus {} --memory {} " +
+    sh("VBoxManage.exe createvm --name {} --ostype {} --register".format(name, vmtype))
+    sh(("VBoxManage.exe modifyvm {} --cpus {} --memory {} " +
         "--audio none --usb off --acpi on --boot1 dvd --nic1 nat").format(name, cpus, mem_mb))
-    sh("vboxmanage createhd --filename {} --size {}".format(disk_path, disk_mb))
-    sh("vboxmanage storagectl {} --name ide-controller --add ide".format(name))
-    sh(("vboxmanage storageattach {} --storagectl ide-controller " +
+    sh("VBoxManage.exe createhd --filename {} --size {}".format(disk_path, disk_mb))
+    sh("VBoxManage.exe storagectl {} --name ide-controller --add ide".format(name))
+    sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
         "--port 0 --device 0 --type hdd --medium {}").format(name, disk_path))
-    sh(("vboxmanage storageattach {} --storagectl ide-controller " +
+    sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
         "--port 0 --device 1 --type dvddrive --medium {}").format(name, iso_path))
 
     ensure_nat_network_exists()
-    sh("vboxmanage modifyvm {} --nic2 natnetwork --nat-network2 {}".format(name, nat_network_name))
+    sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(name, nat_network_name))
 
     configure_port_forwarding(name)
 
@@ -217,43 +217,43 @@ def main():
         list_os_types()
     elif src is not None and dst is None:
         if cmd == "start":
-            sh("vboxmanage startvm --type headless {}".format(src))
+            sh("VBoxManage.exe startvm --type headless {}".format(src))
         elif cmd == "stop":
-            sh("vboxmanage controlvm {} poweroff".format(src))
+            sh("VBoxManage.exe controlvm {} poweroff".format(src))
         elif cmd == "ssh":
             run("ssh -p {} localhost".format(get_vm_ssh_port(src)))
         elif cmd == "ssh-copy-id":
             run("ssh-copy-id -p {} localhost".format(get_vm_ssh_port(src)))
         elif cmd == "vnc":
             tmp = sh(
-                "vboxmanage showvminfo {} | grep VRDE | grep TCP/Ports".format(src))
+                "VBoxManage.exe showvminfo {} | grep VRDE | grep TCP/Ports".format(src))
             port = re.search("""TCP/Ports  = "(\d+)""", tmp).group(1)
             run(('''(echo -en '{}' | ''' +
                  '''vncviewer localhost:{} PasswordFile=/dev/stdin) &''').format(vnc_encrypted_pass, port))
         elif cmd == "change-ports":
             configure_port_forwarding(src)
         elif cmd == "eject-disk":
-            sh(("vboxmanage storageattach {} --storagectl ide-controller " +
+            sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
                 "--port 0 --device 1 --type dvddrive --medium emptydrive").format(src))
         elif cmd == "delete":
-            sh("vboxmanage unregistervm {} --delete".format(src))
+            sh("VBoxManage.exe unregistervm {} --delete".format(src))
         else:
             usage()
     elif src is not None and dst is not None:
         if cmd == "ssh":
             subprocess.call(["ssh", "-p", str(get_vm_ssh_port(src)), "localhost", dst])
         elif cmd == "rename":
-            sh("vboxmanage modifyvm {} --name {}".format(src, dst))
+            sh("VBoxManage.exe modifyvm {} --name {}".format(src, dst))
         elif cmd == "clone":
-            sh("vboxmanage clonevm {} --name {} --register".format(src, dst))
+            sh("VBoxManage.exe clonevm {} --name {} --register".format(src, dst))
             configure_port_forwarding(dst)
         elif cmd == "export" or cmd == "import":
             if not re.match('^.*\.ova$', dst):
                 sys.exit("Invalid argument '{}' - should be .ova file".format(dst))
             if cmd == "export":
-                sh("vboxmanage export {} --output {}".format(src, dst))
+                sh("VBoxManage.exe export {} --output {}".format(src, dst))
             else:
-                sh("vboxmanage import {} --vsys 0 --vmname {}".format(dst, src))
+                sh("VBoxManage.exe import {} --vsys 0 --vmname {}".format(dst, src))
                 configure_port_forwarding(src)
         else:
             usage()

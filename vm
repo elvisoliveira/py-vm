@@ -22,7 +22,6 @@ def usage():
           vm list
           vm start <name>
           vm stop <name>
-          vm change-ports <name>
           vm eject-disk <name>
           vm delete <name>
           vm rename <src> <dst>
@@ -107,11 +106,6 @@ def get_virtualbox_path():
              "Hint: use `VBoxManage.exe setproperty machinefolder /home/user/virtuabox`").format(path))
     return path
 
-def configure_port_forwarding(vm):
-    sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(vm, nat_network_name))
-    sh("VBoxManage.exe modifyvm {} --vrde on".format(vm))
-    sh("VBoxManage.exe modifyvm {} --vrdeaddress 127.0.0.1".format(vm))
-
 def create_vm(args):
     name = args[2]  # already validated
     vmtype = args[3]  # already validated
@@ -135,9 +129,6 @@ def create_vm(args):
     ensure_nat_network_exists()
     sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(name, nat_network_name))
 
-    configure_port_forwarding(name)
-
-
 def main():
     if len(sys.argv) < 2:
         usage()
@@ -160,8 +151,6 @@ def main():
             sh("VBoxManage.exe startvm --type headless {}".format(src))
         elif cmd == "stop":
             sh("VBoxManage.exe controlvm {} poweroff".format(src))
-        elif cmd == "change-ports":
-            configure_port_forwarding(src)
         elif cmd == "eject-disk":
             sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
                 "--port 0 --device 1 --type dvddrive --medium emptydrive").format(src))
@@ -174,7 +163,6 @@ def main():
             sh("VBoxManage.exe modifyvm {} --name {}".format(src, dst))
         elif cmd == "clone":
             sh("VBoxManage.exe clonevm {} --name {} --register".format(src, dst))
-            configure_port_forwarding(dst)
         elif cmd == "export" or cmd == "import":
             if not re.match('^.*\.ova$', dst):
                 sys.exit("Invalid argument '{}' - should be .ova file".format(dst))
@@ -182,7 +170,6 @@ def main():
                 sh("VBoxManage.exe export {} --output {}".format(src, dst))
             else:
                 sh("VBoxManage.exe import {} --vsys 0 --vmname {}".format(dst, src))
-                configure_port_forwarding(src)
         else:
             usage()
     else:

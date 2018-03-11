@@ -8,8 +8,7 @@ import sys
 
 # TODO: support `insert-disk` command
 # TODO: support `modify` command
-# TODO: support `list-full` command: print cpus, mem_mb, disk_mb,
-#       ssh_port, vnc_port, iso path
+# TODO: support `list-full` command: print cpus, mem_mb, disk_mb
 # TODO: use argparse: https://docs.python.org/3/library/argparse.html#sub-commands
 # TODO: support cpu affinity
 
@@ -18,30 +17,22 @@ nat_network_addr = "10.128.0.0/16"
 vnc_plain_pass = "secret"
 vnc_encrypted_pass = '\\x2e\\x2d\\xbf\\x57\\x6e\\xb0\\x6c\\x9e'
 
-
 def usage():
-    sys.exit("""
-Usage:
-  vm create <name> <type> <cpus> <mem_mb> <disk_mb> <iso_path>
-  vm types
-  vm list
-  vm start <name>
-  vm stop <name>
-  vm vnc <name>
-  vm ssh <name> [command]
-  vm ssh-copy-id <name>
-  vm change-ports <name>
-  vm eject-disk <name>
-  vm delete <name>
-  vm rename <src> <dst>
-  vm clone <src> <dst>
-  vm export <name> <file.ova>
-  vm import <name> <file.ova>
-
-Homepage:
-  https://github.com/afiskon/py-vm
-""")
-
+    sys.exit("""Usage:
+          vm create <name> <type> <cpus> <mem_mb> <disk_mb> <iso_path>
+          vm types
+          vm list
+          vm start <name>
+          vm stop <name>
+          vm vnc <name>
+          vm change-ports <name>
+          vm eject-disk <name>
+          vm delete <name>
+          vm rename <src> <dst>
+          vm clone <src> <dst>
+          vm export <name> <file.ova>
+          vm import <name> <file.ova>
+    """)
 
 def sh(cmd):
     """
@@ -119,25 +110,6 @@ def get_virtualbox_path():
              "Hint: use `VBoxManage.exe setproperty machinefolder /home/user/virtuabox`").format(path))
     return path
 
-
-def get_vm_ssh_port(vm):
-    line = sh("VBoxManage.exe showvminfo {} | grep ssh-forwarding".format(vm))
-    return int(re.search("""host port = (\d+)""", line).group(1))
-
-
-def get_max_ssh_port():
-    max_port = 22000
-    lines = sh(
-        "(VBoxManage.exe list vms --long | grep 'ssh-forwarding') || true").split("\n")
-    for line in lines:
-        if line == "":
-            continue
-        port = int(re.search('host port = (\\d+)', line).group(1))
-        if port > max_port:
-            max_port = port
-    return max_port
-
-
 def get_max_vnc_port():
     max_port = 33000
     lines = sh(
@@ -150,14 +122,9 @@ def get_max_vnc_port():
             max_port = port
     return max_port
 
-
 def configure_port_forwarding(vm):
-    ssh_port = get_max_ssh_port() + 1
     vnc_port = get_max_vnc_port() + 1
-    print("VM '{}' - changing ssh port to {} and vnc port to {}".format(vm, ssh_port, vnc_port))
-    run("VBoxManage.exe modifyvm {} --natpf1 delete ssh-forwarding 2>/dev/null".format(vm))
     sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(vm, nat_network_name))
-    sh('VBoxManage.exe modifyvm {} --natpf1 "ssh-forwarding,tcp,,{},,22"'.format(vm, ssh_port))
     sh("VBoxManage.exe modifyvm {} --vrde on".format(vm))
     sh("VBoxManage.exe modifyvm {} --vrdeaddress 127.0.0.1".format(vm))
     sh("VBoxManage.exe modifyvm {} --vrdeport {}".format(vm, vnc_port))
@@ -197,7 +164,7 @@ def main():
     cmd = validate_str(args[1])
     src = validate_str(args[2])
     dst = args[3]
-    if cmd != "import" and cmd != "export" and cmd != "ssh":
+    if cmd != "import" and cmd != "export":
         dst = validate_str(dst)
 
     if cmd == "create":
@@ -211,10 +178,6 @@ def main():
             sh("VBoxManage.exe startvm --type headless {}".format(src))
         elif cmd == "stop":
             sh("VBoxManage.exe controlvm {} poweroff".format(src))
-        elif cmd == "ssh":
-            run("ssh -p {} localhost".format(get_vm_ssh_port(src)))
-        elif cmd == "ssh-copy-id":
-            run("ssh-copy-id -p {} localhost".format(get_vm_ssh_port(src)))
         elif cmd == "vnc":
             tmp = sh(
                 "VBoxManage.exe showvminfo {} | grep VRDE | grep TCP/Ports".format(src))
@@ -231,9 +194,7 @@ def main():
         else:
             usage()
     elif src is not None and dst is not None:
-        if cmd == "ssh":
-            subprocess.call(["ssh", "-p", str(get_vm_ssh_port(src)), "localhost", dst])
-        elif cmd == "rename":
+        if cmd == "rename":
             sh("VBoxManage.exe modifyvm {} --name {}".format(src, dst))
         elif cmd == "clone":
             sh("VBoxManage.exe clonevm {} --name {} --register".format(src, dst))

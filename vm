@@ -6,12 +6,6 @@ import re
 import os
 import sys
 
-# TODO: support `insert-disk` command
-# TODO: support `modify` command
-# TODO: support `list-full` command: print cpus, mem_mb, disk_mb
-# TODO: use argparse: https://docs.python.org/3/library/argparse.html#sub-commands
-# TODO: support cpu affinity
-
 def usage():
     sys.exit("""Usage:
           vm types
@@ -31,13 +25,11 @@ def sh(cmd):
     """
     return subprocess.check_output(cmd, shell=True).decode('utf-8')
 
-
 def run(cmd):
     """
     Run given bash command, return error code
     """
     return subprocess.call(cmd, shell=True)
-
 
 def validate_str(arg):
     if arg is None:
@@ -47,14 +39,12 @@ def validate_str(arg):
             """Bad argument '{}' - should be [A-Za-z90-9_\.-] and no longer than 32 characters""".format(arg))
     return arg
 
-
 def validate_num(num):
     if num is None:
         num = ''
     if not re.match("""^[0-9]+$""", num):
         sys.exit("Bad argument '{}' - should be a number".format(num))
     return int(num)
-
 
 def list_vms():
     all_vms = sh('''VBoxManage.exe list vms | cut -d '"' -f 2''').split("\n")

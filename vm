@@ -17,7 +17,6 @@ nat_network_addr = "10.128.0.0/16"
 
 def usage():
     sys.exit("""Usage:
-          vm create <name> <type> <cpus> <mem_mb> <disk_mb> <iso_path>
           vm types
           vm list
           vm start <name>
@@ -85,17 +84,6 @@ def list_os_types():
     for vmtype in vmtypes:
         print(vmtype)
 
-
-def ensure_nat_network_exists():
-    code = run("VBoxManage.exe natnetwork list | grep Name | grep {} > /dev/null".format(
-        nat_network_name))
-    if code != 0:
-        print("Creating {} network ({})".format(
-            nat_network_name, nat_network_addr))
-        sh(("VBoxManage.exe natnetwork add --netname {} --network {} " +
-            "--enable --dhcp on --ipv6 off").format(nat_network_name, nat_network_addr))
-
-
 def get_virtualbox_path():
     line = sh(
         """VBoxManage.exe list systemproperties | grep 'Default machine folder'""").strip()
@@ -105,29 +93,6 @@ def get_virtualbox_path():
              "Hint: path shouldn't contain whitespaces\n" +
              "Hint: use `VBoxManage.exe setproperty machinefolder /home/user/virtuabox`").format(path))
     return path
-
-def create_vm(args):
-    name = args[2]  # already validated
-    vmtype = args[3]  # already validated
-    cpus = validate_num(args[4])
-    mem_mb = validate_num(args[5])
-    disk_mb = validate_num(args[6])
-    iso_path = args[7]
-    if not os.path.isfile(iso_path):
-        sys.exit("Invalid iso_path '{}' - file doesn't exist".format(iso_path))
-    disk_path = get_virtualbox_path() + "/" + name + "/" + name + ".vdi"
-    sh("VBoxManage.exe createvm --name {} --ostype {} --register".format(name, vmtype))
-    sh(("VBoxManage.exe modifyvm {} --cpus {} --memory {} " +
-        "--audio none --usb off --acpi on --boot1 dvd --nic1 nat").format(name, cpus, mem_mb))
-    sh("VBoxManage.exe createhd --filename {} --size {}".format(disk_path, disk_mb))
-    sh("VBoxManage.exe storagectl {} --name ide-controller --add ide".format(name))
-    sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
-        "--port 0 --device 0 --type hdd --medium {}").format(name, disk_path))
-    sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
-        "--port 0 --device 1 --type dvddrive --medium {}").format(name, iso_path))
-
-    ensure_nat_network_exists()
-    sh("VBoxManage.exe modifyvm {} --nic2 natnetwork --nat-network2 {}".format(name, nat_network_name))
 
 def main():
     if len(sys.argv) < 2:
@@ -140,9 +105,7 @@ def main():
     if cmd != "import" and cmd != "export":
         dst = validate_str(dst)
 
-    if cmd == "create":
-        create_vm(args)
-    elif cmd == "list":
+    if cmd == "list":
         list_vms()
     elif cmd == "types":
         list_os_types()

@@ -12,16 +12,12 @@ import sys
 # TODO: use argparse: https://docs.python.org/3/library/argparse.html#sub-commands
 # TODO: support cpu affinity
 
-nat_network_name = "VmPyNatNetwork"
-nat_network_addr = "10.128.0.0/16"
-
 def usage():
     sys.exit("""Usage:
           vm types
           vm list
           vm start <name>
           vm stop <name>
-          vm eject-disk <name>
           vm delete <name>
           vm rename <src> <dst>
           vm clone <src> <dst>
@@ -74,16 +70,6 @@ def list_vms():
             status = "running"
         print("{:32} {:12}".format(vm, status))
 
-def list_os_types():
-    lines = sh('''VBoxManage.exe list ostypes | egrep ^ID''').strip().split("\n")
-    vmtypes = []
-    for line in lines:
-        vmtypes.append(re.search('(\\S+)$', line).group(1))
-
-    vmtypes.sort()
-    for vmtype in vmtypes:
-        print(vmtype)
-
 def get_virtualbox_path():
     line = sh(
         """VBoxManage.exe list systemproperties | grep 'Default machine folder'""").strip()
@@ -107,16 +93,11 @@ def main():
 
     if cmd == "list":
         list_vms()
-    elif cmd == "types":
-        list_os_types()
     elif src is not None and dst is None:
         if cmd == "start":
             sh("VBoxManage.exe startvm --type headless {}".format(src))
         elif cmd == "stop":
             sh("VBoxManage.exe controlvm {} poweroff".format(src))
-        elif cmd == "eject-disk":
-            sh(("VBoxManage.exe storageattach {} --storagectl ide-controller " +
-                "--port 0 --device 1 --type dvddrive --medium emptydrive").format(src))
         elif cmd == "delete":
             sh("VBoxManage.exe unregistervm {} --delete".format(src))
         else:

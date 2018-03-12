@@ -18,83 +18,47 @@ def usage():
     """)
 
 def sh(cmd):
-    """
-    Run given bash command, return output, throw exception on error
-    """
-    return subprocess.check_output(cmd, shell=True).decode('utf-8')
-
-def run(cmd):
-    """
-    Run given bash command, return error code
-    """
-    return subprocess.call(cmd, shell=True)
+    """Run given bash command, return output, throw exception on error"""
+    return subprocess.check_output("VBoxManage.exe " + cmd, shell=True).decode('utf-8')
 
 def validate_str(arg):
-    if arg is None:
-        return None
-    if not re.match("""^[A-Za-z0-9_\.-]{1,32}$""", arg):
-        sys.exit(
-            """Bad argument '{}' - should be [A-Za-z90-9_\.-] and no longer than 32 characters""".format(arg))
+    if arg is None: return None
+    if not re.match("^[A-Za-z0-9_\.-]{1,32}$", arg):
+        sys.exit("Bad argument '{}' - should be [A-Za-z90-9_\.-] and no longer than 32 characters". format(arg))
     return arg
 
 def list_vms():
-    all_vms = sh('''VBoxManage.exe list vms | cut -d '"' -f 2''').split("\n")
+    all_vms = sh("list vms | cut -d '\"' -f 2").split("\n")
     all_vms.sort()
-    running_vms = set(sh('''VBoxManage.exe list runningvms | cut -d '"' -f 2''').split("\n"))
+    running_vms = set(sh("list runningvms | cut -d '\"' -f 2").split("\n"))
     print("{:32} {:12}".format("VM", "STATUS"))
     print("-" * (32 + 1 + 12))
     for vm in all_vms:
-        if vm == "":
-            continue
+        if vm == "": continue
         status = "powered off"
-        if vm in running_vms:
-            status = "running"
+        if vm in running_vms: status = "running"
         print("{:32} {:12}".format(vm, status))
 
-def get_virtualbox_path():
-    line = sh(
-        """VBoxManage.exe list systemproperties | grep 'Default machine folder'""").strip()
-    path = re.search("""(\\S+)$""", line).group(1)
-    if not os.path.isdir(path):
-        sys.exit(("get_virtualbox_path() - '{}' is not a directory\n" +
-             "Hint: path shouldn't contain whitespaces\n" +
-             "Hint: use `VBoxManage.exe setproperty machinefolder /home/user/virtuabox`").format(path))
-    return path
-
 def main():
-    if len(sys.argv) < 2:
-        usage()
+    if len(sys.argv) < 2: usage()
     args = sys.argv + [None, None, None, None, None, None]
     cmd = validate_str(args[1])
     src = validate_str(args[2])
-    dst = args[3]
-    if cmd != "import" and cmd != "export":
-        dst = validate_str(dst)
-    if cmd == "list":
-        list_vms()
+    dst = validate_str(args[3])
+    if cmd == "list": list_vms()
     elif src is not None and dst is None:
-        if cmd == "start":
-            sh("VBoxManage.exe startvm --type headless {}".format(src))
-        elif cmd == "stop":
-            sh("VBoxManage.exe controlvm {} poweroff".format(src))
-        else:
-            usage()
+        if cmd == "start": sh("startvm --type headless {}".format(src))
+        elif cmd == "stop": sh("controlvm {} poweroff".format(src))
+        else: usage()
     elif src is not None and dst is not None:
-        if cmd == "rename":
-            sh("VBoxManage.exe modifyvm {} --name {}".format(src, dst))
-        elif cmd == "clone":
-            sh("VBoxManage.exe clonevm {} --name {} --register".format(src, dst))
+        if cmd == "rename": sh("modifyvm {} --name {}".format(src, dst))
+        elif cmd == "clone": sh("clonevm {} --name {} --register".format(src, dst))
         elif cmd == "export" or cmd == "import":
-            if not re.match('^.*\.ova$', dst):
-                sys.exit("Invalid argument '{}' - should be .ova file".format(dst))
-            if cmd == "export":
-                sh("VBoxManage.exe export {} --output {}".format(src, dst))
-            else:
-                sh("VBoxManage.exe import {} --vsys 0 --vmname {}".format(dst, src))
-        else:
-            usage()
-    else:
-        usage()
+            if not re.match('^.*\.ova$', dst): sys.exit("Invalid argument '{}' - should be .ova file".format(dst))
+            if cmd == "export": sh("export {} --output {}".format(src, dst))
+            else: sh("import {} --vsys 0 --vmname {}".format(dst, src))
+        else: usage()
+    else: usage()
 
 if __name__ == "__main__":
     main()

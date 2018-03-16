@@ -10,6 +10,7 @@ def usage():
     sys.exit("""Usage:
           vm list
           vm start <name>
+          vm pause <name>
           vm stop <name>
           vm rename <src> <dst>
           vm clone <src> <dst>
@@ -49,6 +50,7 @@ def main():
     elif src is not None and dst is None:
         if cmd == "start": sh("startvm --type headless {}".format(src))
         elif cmd == "stop": sh("controlvm {} poweroff".format(src))
+        elif cmd == "pause": sh("controlvm {} savestate".format(src))
         else: usage()
     elif src is not None and dst is not None:
         if cmd == "rename": sh("modifyvm {} --name {}".format(src, dst))

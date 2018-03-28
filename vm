@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-# vim: set ai et ts=4 sw=4:
+# TODO:
+# - On stop action, check before if the machine is started, otherwise, give a warning.
+# - On pause action, check before if them machine is started, otherwise, give a warning.
+# - On start action, check before if the machine is stopped or paused, otherwise, give a warning.
+# - After cloning a machine, change it's MAC address: VBoxManage.exe modifyvm {Machine Name} --macaddressN auto (Where N is the card number)
+# - List started machines IP on an extra column for list argument: VBoxManage.exe guestproperty enumerate {Machine Name} | grep 192
 
 import subprocess
 import re
